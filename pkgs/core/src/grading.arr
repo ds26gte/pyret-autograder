@@ -160,7 +160,7 @@ type GradingOutput<B, I, C> = {
   repl-programs :: SD.StringDict<RanProgram>
 }
 
-fun grade-only(graders :: List<Grader<Any, Any, Any>>) -> List<NodeResult<Any, Any, Any, Any, Any>>:
+fun grade-only(graders :: List<Grader<Any, Any, Any>>) -> List<List<NodeResult<Any, Any, Any, Any, Any>>>:
   dag = for map(grader from graders):
     ctx = {
       to-aggregate: grader.to-aggregate,
@@ -169,7 +169,28 @@ fun grade-only(graders :: List<Grader<Any, Any, Any>>) -> List<NodeResult<Any, A
     node(grader.id, grader.name, grader.deps, grader.run, ctx)
   end
   results = execute(dag)
-  return results
+  functionality-results = results.filter(lam(result):
+      cases (NodeResult) result:
+        | executed(_, _, name, _) =>
+          (name == "functionality")
+        | skipped(_, _) => false
+      end
+    end)
+  wheat-results = results.filter(lam(result):
+      cases (NodeResult) result:
+        | executed(_, _, name, _) =>
+          (name == "wheat")
+        | skipped(_, _) => false
+      end
+    end)
+  chaff-results = results.filter(lam(result):
+      cases (NodeResult) result:
+        | executed(_, _, name, _) =>
+          (name == "chaff")
+        | skipped(_, _) => false
+      end
+    end)
+  [list: functionality-results, wheat-results, chaff-results]
 end
 
 # HACK: these should be existentials, not `Any`
