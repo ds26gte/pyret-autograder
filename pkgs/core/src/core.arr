@@ -52,6 +52,7 @@ data Node<BlockReason, RanResult, Error, Info, Context>:
   # ctx: additional context associated with the Node
   | node(
       id :: Id,
+      name :: String,
       deps :: List<Id>,
       run :: Runner<BlockReason, RanResult, Error, Info>,
       ctx :: Context)
@@ -82,6 +83,7 @@ data NodeResult<BlockReason, RanResult, Error, Info, Context>:
   | executed(
       outcome :: Outcome<BlockReason, RanResult, Error>,
       info :: Info,
+      name :: String,
       ctx :: Context)
 
   # node wasn't run because of unmet dependency
@@ -98,7 +100,7 @@ sharing:
     ```
 
     cases (NodeResult) self:
-      | executed(outcome, _, _) =>
+      | executed(outcome, _, _, _) =>
         cases (Outcome) outcome:
           | noop => none
           | emit(_) => none
@@ -204,7 +206,7 @@ fun execute<B, R, E, I, C>(
       | none =>
         print("executing " + node.id + "...\n")
         {outcome; info} = node.run()
-        executed(outcome, info, node.ctx)
+        executed(outcome, info, node.name, node.ctx)
       | some(blocking-id) =>
         print(
           "skipping " + node.id + " because of unmet dependency " +

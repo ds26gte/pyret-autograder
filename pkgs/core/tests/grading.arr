@@ -33,7 +33,7 @@ fun strip-ctx<A, B, C>(output :: GradingOutput<A, B, C>) -> GradingOutput<A, B, 
     trace:
       {(x):
         x.{ result: cases (NodeResult) x.result:
-          | executed(outcome, info, ctx) => executed(outcome, info, nothing)
+          | executed(outcome, info, name, ctx) => executed(outcome, info, name, nothing)
           | skipped(id, ctx) => skipped(id, nothing)
         end }}
       ^ output.trace.map,
@@ -42,12 +42,12 @@ fun strip-ctx<A, B, C>(output :: GradingOutput<A, B, C>) -> GradingOutput<A, B, 
 where:
   strip-ctx({
     aggregated: [list:],
-    trace: [list: {id: "foo1", result: executed(emit(score(0.5)), nothing, {(x): x})},
+    trace: [list: {id: "foo1", result: executed(emit(score(0.5)), nothing, "", {(x): x})},
                   {id: "foo2", result: skipped("bar", {(x): x + 1})}],
     repl-programs: [SD.string-dict:]
   }) is {
     aggregated: [list:],
-    trace: [list: {id: "foo1", result: executed(emit(score(0.5)), nothing, nothing)},
+    trace: [list: {id: "foo1", result: executed(emit(score(0.5)), nothing, "", nothing)},
                   {id: "foo2", result: skipped("bar", nothing)}],
     repl-programs: [SD.string-dict:]
   }
@@ -60,7 +60,7 @@ check "grading: control flow":
 
   fun simple-aggregator(node-result :: NodeResult):
     cases (NodeResult) node-result:
-      | executed(outcome, info, ctx) =>
+      | executed(outcome, info, _, ctx) =>
         str-outcome = cases (Outcome) outcome:
           | noop => "(noop)"
           | emit(grading-result) =>
@@ -105,7 +105,7 @@ check "grading: control flow":
     aggregated: [list: "(executed (info nothing) (outcome (block blocker1)))",
                        "(skipped guard_1)",
                        "(skipped guard_1)"].map(dummy-agg),
-    trace: [list: {id: "guard_1", result: executed(block(blocker1), nothing, nothing)},
+    trace: [list: {id: "guard_1", result: executed(block(blocker1), nothing, "", nothing)},
                   {id: "guard_2", result: skipped("guard_1", nothing)},
                   {id: "test_1", result: skipped("guard_1", nothing)}],
     repl-programs: [SD.string-dict:]
@@ -122,8 +122,8 @@ check "grading: control flow":
     aggregated: [list: "(executed (info nothing) (outcome (noop)))",
                        "(executed (info nothing) (outcome (block blocker2)))",
                        "(skipped guard_2)"].map(dummy-agg),
-    trace: [list: {id: "guard_1", result: executed(noop, nothing, nothing)},
-                  {id: "guard_2", result: executed(block(blocker2), nothing, nothing)},
+    trace: [list: {id: "guard_1", result: executed(noop, nothing, "", nothing)},
+                  {id: "guard_2", result: executed(block(blocker2), nothing, "", nothing)},
                   {id: "test_1", result: skipped("guard_2", nothing)}],
     repl-programs: [SD.string-dict:]
   }
@@ -139,9 +139,9 @@ check "grading: control flow":
     aggregated: [list: "(executed (info nothing) (outcome (noop)))",
                        "(executed (info nothing) (outcome (noop)))",
                        "(executed (info nothing) (outcome (emit (score 1))))"].map(dummy-agg),
-    trace: [list: {id: "guard_1", result: executed(noop, nothing, nothing)},
-                  {id: "guard_2", result: executed(noop, nothing, nothing)},
-                  {id: "test_1", result: executed(emit(score(1)), nothing, nothing)}],
+    trace: [list: {id: "guard_1", result: executed(noop, nothing, "", nothing)},
+                  {id: "guard_2", result: executed(noop, nothing, "", nothing)},
+                  {id: "test_1", result: executed(emit(score(1)), nothing, "", nothing)}],
     repl-programs: [SD.string-dict:]
   }
 end
@@ -149,7 +149,7 @@ end
 check "grading: aggregators":
   fun tmpl(node-result):
     cases (NodeResult) node-result:
-      | executed(outcome, info, ctx) =>
+      | executed(outcome, info, _, ctx) =>
         cases (Outcome) outcome:
           | noop => ...
           | emit(grading-result) =>
@@ -181,7 +181,7 @@ check "grading: aggregators":
 
   fun test-aggregator(id, node-result):
     cases (NodeResult) node-result:
-      | executed(outcome, info, ctx) =>
+      | executed(outcome, info, _, ctx) =>
         cases (Outcome) outcome:
           | emit(grading-result) =>
             cases (GradingResult) grading-result:
@@ -199,7 +199,7 @@ check "grading: aggregators":
 
   fun artifact-aggregator(id, node-result):
     cases (NodeResult) node-result:
-      | executed(outcome, info, ctx) =>
+      | executed(outcome, info, _, ctx) =>
         cases (Outcome) outcome:
           | emit(grading-result) =>
             cases (GradingResult) grading-result:

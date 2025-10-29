@@ -50,7 +50,7 @@ end
 fun summarize-result(id :: String, result :: NodeResult, is-staff :: Boolean) -> String:
   "### " + id + "\n" +
   cases(NodeResult) result:
-    | executed(outcome, info, ctx) =>
+    | executed(outcome, info, name, ctx) =>
       "was run resulting in: " + summarize-outcome(outcome, is-staff) +
       if is-staff and (info <> nothing):
         "\n\nAdditionally it produced the following info:\n" +

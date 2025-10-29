@@ -28,7 +28,7 @@ data ExBlockReason:
 end
 
 fun mk-node(id :: Id, deps :: List<Id>, shadow runner):
-  node(id, deps, runner, none)
+  node(id, "", deps, runner, none)
 end
 
 fun runner(val):
@@ -38,7 +38,7 @@ fun runner(val):
 end
 
 fun res(outcome):
-  executed(outcome, none, none)
+  executed(outcome, none, "", none)
 end
 
 fun skip(id):

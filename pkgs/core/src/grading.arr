@@ -43,6 +43,7 @@ provide:
   type GradingOutput,
   data RanProgram,
   grade,
+  grade-only,
 end
 
 data AggregateOutput:
@@ -126,6 +127,7 @@ type GradingRunner<B, I> = (-> GraderOutput<B, I>)
 # FIXME: this needs existentials
 type Grader<B, I, C> = {
   id :: Id,
+  name :: String,
   deps :: List<Id>,
   run :: GradingRunner<B, I>,
   to-aggregate :: GradingAggregator<B, I, C>,
@@ -158,6 +160,18 @@ type GradingOutput<B, I, C> = {
   repl-programs :: SD.StringDict<RanProgram>
 }
 
+fun grade-only(graders :: List<Grader<Any, Any, Any>>) -> List<NodeResult<Any, Any, Any, Any, Any>>:
+  dag = for map(grader from graders):
+    ctx = {
+      to-aggregate: grader.to-aggregate,
+      to-repl: grader.to-repl
+    }
+    node(grader.id, grader.name, grader.deps, grader.run, ctx)
+  end
+  results = execute(dag)
+  return results
+end
+
 # HACK: these should be existentials, not `Any`
 fun grade(graders :: List<Grader<Any, Any, Any>>) -> GradingOutput<Any, Any, Any>:
   dag = for map(grader from graders):
@@ -165,7 +179,7 @@ fun grade(graders :: List<Grader<Any, Any, Any>>) -> GradingOutput<Any, Any, Any
       to-aggregate: grader.to-aggregate,
       to-repl: grader.to-repl
     }
-    node(grader.id, grader.deps, grader.run, ctx)
+    node(grader.id, grader.name, grader.deps, grader.run, ctx)
   end
   results = execute(dag)
 

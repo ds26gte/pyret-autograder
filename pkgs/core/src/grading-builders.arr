@@ -64,7 +64,7 @@ fun mk-guard<BlockReason, C>(
     end,
     to-aggregate: lam(result :: GraderResult<BlockReason, Nothing, C>) -> Option<AggregateResult>:
       cases (NodeResult) result:
-        | executed(outcome, _, _) =>
+        | executed(outcome, _, _, _) =>
           cases (Outcome) outcome:
             | noop => guard-passed
             | block(reason) =>
@@ -101,6 +101,14 @@ fun mk-scorer<Info, C>(
                    "please report this to course staff."
   {
     id: id,
+    name: if string-contains(name, " against our correct implementation(s)"):
+            "wheat"
+          elseif string-contains(name, " against our incorrect implementation(s)"):
+            "chaff"
+          elseif string-contains(name, "Functional Test for "):
+            "functional"
+          else: ""
+          end
     deps: deps,
     run: lam():
       cases (Either) scorer():
@@ -110,7 +118,7 @@ fun mk-scorer<Info, C>(
     end,
     to-aggregate: lam(result :: GraderResult<Nothing, Option<Info>, C>) -> Option<AggregateResult>:
       cases (NodeResult) result:
-        | executed(outcome, info, _) =>
+        | executed(outcome, info, _, _) =>
           cases (Outcome) outcome:
             | emit(res) =>
               cases (GradingResult) res:
@@ -172,7 +180,7 @@ fun mk-repl-scorer<Info, C>(
   mk-scorer(id, deps, scorer, name, max-score, calc-score, format, part).{
     to-repl: lam(result :: GraderResult<Nothing, Option<Info>, C>) -> Option<RanProgram>:
       cases (NodeResult) result:
-        | executed(outcome, info, _) =>
+        | executed(outcome, info, _, _) =>
           cases (Outcome) outcome:
             | emit(_) =>
               cases (Option) info:
@@ -203,7 +211,7 @@ fun mk-artist<Info, C>(
     end,
     to-aggregate: lam(result :: GraderResult<Nothing, Option<Info>, C>) -> Option<AggregateResult>:
       cases (NodeResult) result:
-        | executed(outcome, info, _) =>
+        | executed(outcome, info, _, _) =>
           cases (Outcome) outcome:
             | noop => none
             | emit(res) =>
