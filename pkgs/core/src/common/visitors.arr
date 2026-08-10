@@ -84,38 +84,48 @@ fun make-check-extractor(target-name :: String) block:
 end
 
 # pred :: (String -> Boolean)
-# For s-fun nodes, pred is called with the function name (a String).
-# For s-check nodes, pred is called with the inner name string when the check
-# block is named; unnamed check blocks are always removed.
+# Filters the top-level statements of a program:
+#   - s-fun nodes: pred is called with the function name (a String); if it fails,
+#     the function's where: block is stripped (the function body is kept).
+#   - standalone s-check nodes: pred is called with the inner name string when the
+#     block is named (unnamed checks are always removed). REMOVED checks are
+#     DELETED from the statement list -- not replaced with a `nothing` expression.
+#     This matters for scope: a bare statement sitting between two top-level
+#     functions splits them out of a shared mutual-recursion group, so a function
+#     that calls another defined later (with an intervening check block) would fail
+#     to resolve. Deleting the check statement keeps such functions adjacent.
 # Example: pred = lam(n): n == "foo" end
 #   - keeps s-fun named "foo" (with its where block)
-#   - keeps standalone named check blocks "foo"
-#   - removes all other check blocks/where blocks
+#   - keeps standalone named check block "foo"
+#   - removes all other check blocks / where blocks
 # Example: pred = lam(_): false end
-#   - removes ALL check blocks (both s-fun where blocks and s-check blocks)
+#   - removes ALL check blocks (both s-fun where blocks and standalone s-check blocks)
 fun make-check-filter(pred :: (String -> Boolean)):
-  A.default-map-visitor.{
-    method s-check(self, l, name, body, keyword-check):
-      # name :: Option<String>; unwrap and apply pred; unnamed blocks are removed
-      keep = cases (Option) name:
-        | some(n) => pred(n)
-        | none => false
-      end
-      if keep:
-        A.s-check(l, name, body.visit(self), keyword-check)
-      else:
-        A.s-id(l, A.s-name(l, "nothing"))
-      end
-    end,
-
-    method s-fun(self, l, name, params, args, ann, doc, body, _check-loc, _check, blocky):
-      if pred(name):
-        A.s-fun(l, name, params, args, ann, doc, body, _check-loc, _check, blocky)
-      else:
-        A.s-fun(l, name, params, args, ann, doc, body, _check-loc, none, blocky)
-      end
+  fun keep-check(name :: Option<String>) -> Boolean:
+    cases (Option) name:
+      | some(n) => pred(n)
+      | none => false
     end
-  }
+  end
+  fun transform(stmts :: List<A.Expr>) -> List<A.Expr>:
+    cases (List) stmts:
+      | empty => empty
+      | link(stmt, rest0) =>
+        rest = transform(rest0)
+        cases (A.Expr) stmt:
+          | s-check(_, name, _, _) =>
+            if keep-check(name): link(stmt, rest) else: rest end
+          | s-fun(fl, fname, fparams, fargs, fann, fdoc, fbody, floc, _, fblocky) =>
+            if pred(fname):
+              link(stmt, rest)
+            else:
+              link(A.s-fun(fl, fname, fparams, fargs, fann, fdoc, fbody, floc, none, fblocky), rest)
+            end
+          | else => link(stmt, rest)
+        end
+    end
+  end
+  block-transformer(transform)
 end
 
 fun block-transformer(transformer :: (List<A.Expr> -> List<A.Expr>)):
