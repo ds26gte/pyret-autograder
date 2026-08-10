@@ -100,32 +100,32 @@ end
 #   - removes all other check blocks / where blocks
 # Example: pred = lam(_): false end
 #   - removes ALL check blocks (both s-fun where blocks and standalone s-check blocks)
+fun filter-check-stmts(pred :: (String -> Boolean), stmts :: List<A.Expr>) -> List<A.Expr>:
+  doc: "Drop removed standalone check blocks entirely (not replaced with a nothing expression, which would split adjacent functions out of a mutual-recursion group); strip where: blocks from functions the predicate rejects."
+  cases (List) stmts:
+    | empty => empty
+    | link(stmt, rest0) =>
+      rest = filter-check-stmts(pred, rest0)
+      cases (A.Expr) stmt:
+        | s-check(_, name, _, _) =>
+          keep = cases (Option) name:
+            | some(n) => pred(n)
+            | none => false
+          end
+          if keep: link(stmt, rest) else: rest end
+        | s-fun(fl, fname, fparams, fargs, fann, fdoc, fbody, floc, _, fblocky) =>
+          if pred(fname):
+            link(stmt, rest)
+          else:
+            link(A.s-fun(fl, fname, fparams, fargs, fann, fdoc, fbody, floc, none, fblocky), rest)
+          end
+        | else => link(stmt, rest)
+      end
+  end
+end
+
 fun make-check-filter(pred :: (String -> Boolean)):
-  fun keep-check(name :: Option<String>) -> Boolean:
-    cases (Option) name:
-      | some(n) => pred(n)
-      | none => false
-    end
-  end
-  fun transform(stmts :: List<A.Expr>) -> List<A.Expr>:
-    cases (List) stmts:
-      | empty => empty
-      | link(stmt, rest0) =>
-        rest = transform(rest0)
-        cases (A.Expr) stmt:
-          | s-check(_, name, _, _) =>
-            if keep-check(name): link(stmt, rest) else: rest end
-          | s-fun(fl, fname, fparams, fargs, fann, fdoc, fbody, floc, _, fblocky) =>
-            if pred(fname):
-              link(stmt, rest)
-            else:
-              link(A.s-fun(fl, fname, fparams, fargs, fann, fdoc, fbody, floc, none, fblocky), rest)
-            end
-          | else => link(stmt, rest)
-        end
-    end
-  end
-  block-transformer(transform)
+  block-transformer(lam(stmts): filter-check-stmts(pred, stmts) end)
 end
 
 fun block-transformer(transformer :: (List<A.Expr> -> List<A.Expr>)):
